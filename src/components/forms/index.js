@@ -5,9 +5,11 @@ import {
   RFFCFormSwitch,
   RFFCFormInput,
   RFFCFormRadio,
+  RFFCFormRadioList,
   RFFCFormTextarea,
   RFFCFormSelect,
   RFFSelectSearch,
+  RFFCFormInputArray,
 } from 'src/components/forms/RFFComponents'
 
 export {
@@ -17,7 +19,9 @@ export {
   RFFCFormSwitch,
   RFFCFormInput,
   RFFCFormRadio,
+  RFFCFormRadioList,
   RFFCFormTextarea,
   RFFCFormSelect,
   RFFSelectSearch,
+  RFFCFormInputArray,
 }
