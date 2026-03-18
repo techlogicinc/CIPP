@@ -79,6 +79,11 @@ export const nativeMenuItems = [
             permissions: ["Identity.Role.*"],
           },
           {
+            title: "Vacation Mode",
+            path: "/identity/administration/vacation-mode",
+            permissions: ["Identity.User.*"],
+          },
+          {
             title: "Offboarding Wizard",
             path: "/identity/administration/offboarding-wizard",
             permissions: ["Identity.User.*"],
@@ -448,6 +453,16 @@ export const nativeMenuItems = [
             permissions: ["Endpoint.MEM.*"],
           },
           {
+            title: "Reusable Settings",
+            path: "/endpoint/MEM/reusable-settings",
+            permissions: ["Endpoint.MEM.*"],
+          },
+          {
+            title: "Reusable Settings Templates",
+            path: "/endpoint/MEM/reusable-settings-templates",
+            permissions: ["Endpoint.MEM.*"],
+          },
+          {
             title: "Assignment Filters",
             path: "/endpoint/MEM/assignment-filters",
             permissions: ["Endpoint.MEM.*"],
@@ -727,6 +742,11 @@ export const nativeMenuItems = [
             permissions: ["Exchange.Mailbox.*"],
           },
           {
+            title: "Mailbox Forwarding",
+            path: "/email/reports/mailbox-forwarding",
+            permissions: ["Exchange.Mailbox.*"],
+          },
+          {
             title: "Anti-Phishing Filters",
             path: "/email/reports/antiphishing-filters",
             permissions: ["Exchange.SpamFilter.*"],
@@ -791,7 +811,6 @@ export const nativeMenuItems = [
             path: "/tenant/tools/tenantlookup",
             permissions: ["Tenant.Administration.*"],
           },
-
           {
             title: "IP Database",
             path: "/tenant/tools/geoiplookup",
