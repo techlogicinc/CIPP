@@ -25,6 +25,25 @@ import { CippDataTable } from "../CippTable/CippDataTable";
 import React from "react";
 import { CloudUpload } from "@mui/icons-material";
 import { Stack } from "@mui/system";
+import countryList from "../../data/countryList";
+import languageList from "../../data/languageList";
+
+// ISO 3166-1 alpha-2 country/region codes (uppercase), used by the CountryCodeMultiSelect type.
+const countryCodeOptions = countryList
+  .map((c) => ({ label: `${c.Name} (${c.Code})`, value: c.Code }))
+  .sort((a, b) => a.label.localeCompare(b.label));
+
+// ISO 639-1 alpha-2 language codes (lowercase), used by the LanguageCodeMultiSelect type.
+// Derived from the locale tags in languageList.json, deduplicated to the two-letter primary subtag (e.g. "en-US" -> "en").
+const languageCodeOptions = Object.values(
+  languageList.reduce((acc, entry) => {
+    const code = entry.tag?.split("-")[0]?.toLowerCase();
+    if (code && code.length === 2 && !acc[code]) {
+      acc[code] = { label: `${entry.language} (${code})`, value: code };
+    }
+    return acc;
+  }, {}),
+).sort((a, b) => a.label.localeCompare(b.label));
 
 // The tiptap / prosemirror / mui-tiptap editor tree is large and only used by `richText` fields.
 // Load it on demand via next/dynamic so it is code-split into an async chunk instead of being
@@ -85,6 +104,59 @@ export const CippFormComponent = (props) => {
         />
       );
     }
+  };
+
+  // Shared renderer for autoComplete-backed fields (autoComplete + the ISO-code multiselects).
+  const renderAutoCompleteField = (autoCompleteProps) => {
+    // Resolve options if it's a function
+    const resolvedOptions =
+      typeof autoCompleteProps.options === "function"
+        ? autoCompleteProps.options(row)
+        : autoCompleteProps.options;
+
+    // Wrap validate function to pass row as third parameter
+    const resolvedValidators = validators
+      ? {
+          ...validators,
+          validate:
+            typeof validators.validate === "function"
+              ? (value, formValues) => validators.validate(value, formValues, row)
+              : validators.validate,
+        }
+      : validators;
+
+    return (
+      <div>
+        <Controller
+          name={convertedName}
+          control={formControl.control}
+          rules={resolvedValidators}
+          render={({ field }) => (
+            <MemoizedCippAutoComplete
+              {...autoCompleteProps}
+              options={resolvedOptions}
+              isFetching={autoCompleteProps.isFetching}
+              variant="filled"
+              defaultValue={field.value}
+              label={label}
+              onChange={(value) => field.onChange(value)}
+              onBlur={field.onBlur}
+            />
+          )}
+        />
+
+        {get(errors, convertedName, {})?.message && (
+          <Typography variant="subtitle3" color="error">
+            {get(errors, convertedName, {})?.message}
+          </Typography>
+        )}
+        {helperText && (
+          <Typography variant="subtitle3" color="text.secondary">
+            {helperText}
+          </Typography>
+        )}
+      </div>
+    );
   };
 
   switch (type) {
@@ -182,6 +254,64 @@ export const CippFormComponent = (props) => {
               />
             </div>
           </Tooltip>
+          {get(errors, convertedName, {})?.message && (
+            <Typography variant="subtitle3" color="error">
+              {get(errors, convertedName, {})?.message}
+            </Typography>
+          )}
+          {helperText && (
+            <Typography variant="subtitle3" color="text.secondary">
+              {helperText}
+            </Typography>
+          )}
+        </>
+      );
+    case "colorPicker":
+      return (
+        <>
+          <div>
+            <Controller
+              name={convertedName}
+              control={formControl.control}
+              defaultValue={defaultValue || ""}
+              rules={{
+                pattern: {
+                  value: /^#[0-9A-F]{6}$/i,
+                  message: "Please enter a valid hex color (e.g., #F77F00)",
+                },
+                ...validators,
+              }}
+              render={({ field }) => (
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                  <input
+                    type="color"
+                    value={/^#[0-9A-F]{6}$/i.test(field.value || "") ? field.value : "#000000"}
+                    onChange={(e) => field.onChange(e.target.value)}
+                    style={{
+                      width: "50px",
+                      height: "40px",
+                      border: "1px solid #ddd",
+                      borderRadius: "4px",
+                      cursor: "pointer",
+                      padding: 0,
+                    }}
+                  />
+                  <TextField
+                    variant="filled"
+                    InputLabelProps={{
+                      shrink: true,
+                    }}
+                    sx={{ width: "150px" }}
+                    {...other}
+                    label={label}
+                    value={field.value || ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                  />
+                </Box>
+              )}
+            />
+          </div>
           {get(errors, convertedName, {})?.message && (
             <Typography variant="subtitle3" color="error">
               {get(errors, convertedName, {})?.message}
@@ -373,7 +503,15 @@ export const CippFormComponent = (props) => {
               name={convertedName}
               control={formControl.control}
               defaultValue={defaultValue}
-              rules={validators}
+              rules={
+                // Pass row as third parameter, same as autoComplete fields
+                typeof validators?.validate === "function"
+                  ? {
+                      ...validators,
+                      validate: (value, formValues) => validators.validate(value, formValues, row),
+                    }
+                  : validators
+              }
               render={({ field }) => {
                 return (
                   <RadioGroup
@@ -434,55 +572,26 @@ export const CippFormComponent = (props) => {
         </>
       );
 
-    case "autoComplete": {
-      // Resolve options if it's a function
-      const resolvedOptions =
-        typeof other.options === "function" ? other.options(row) : other.options;
+    case "autoComplete":
+      return renderAutoCompleteField(other);
 
-      // Wrap validate function to pass row as third parameter
-      const resolvedValidators = validators
-        ? {
-            ...validators,
-            validate:
-              typeof validators.validate === "function"
-                ? (value, formValues) => validators.validate(value, formValues, row)
-                : validators.validate,
-          }
-        : validators;
+    // ISO 3166-1 alpha-2 region/country code multiselect (e.g. Spam Filter RegionBlockList).
+    case "CountryCodeMultiSelect":
+      return renderAutoCompleteField({
+        ...other,
+        options: countryCodeOptions,
+        multiple: true,
+        creatable: false,
+      });
 
-      return (
-        <div>
-          <Controller
-            name={convertedName}
-            control={formControl.control}
-            rules={resolvedValidators}
-            render={({ field }) => (
-              <MemoizedCippAutoComplete
-                {...other}
-                options={resolvedOptions}
-                isFetching={other.isFetching}
-                variant="filled"
-                defaultValue={field.value}
-                label={label}
-                onChange={(value) => field.onChange(value)}
-                onBlur={field.onBlur}
-              />
-            )}
-          />
-
-          {get(errors, convertedName, {})?.message && (
-            <Typography variant="subtitle3" color="error">
-              {get(errors, convertedName, {})?.message}
-            </Typography>
-          )}
-          {helperText && (
-            <Typography variant="subtitle3" color="text.secondary">
-              {helperText}
-            </Typography>
-          )}
-        </div>
-      );
-    }
+    // ISO 639-1 alpha-2 language code multiselect (e.g. Spam Filter LanguageBlockList).
+    case "LanguageCodeMultiSelect":
+      return renderAutoCompleteField({
+        ...other,
+        options: languageCodeOptions,
+        multiple: true,
+        creatable: false,
+      });
 
     case "richText": {
       return (
