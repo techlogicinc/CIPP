@@ -6,6 +6,7 @@ import {
   Password,
   PasswordOutlined,
   Key,
+  Memory,
   Edit,
   Security,
   FindInPage,
@@ -13,6 +14,7 @@ import {
   AutoMode,
   Recycling,
   ManageAccounts,
+  GroupAdd,
 } from '@mui/icons-material'
 
 // Shared between the MEM devices list page and the View Device detail page.
@@ -72,6 +74,61 @@ export const getIntuneDeviceActions = ({ tenantFilter } = {}) => [
       },
     ],
     confirmText: 'Select the User to set as the primary user for [deviceName]',
+  },
+  {
+    label: 'Add to Group',
+    type: 'POST',
+    icon: <GroupAdd />,
+    url: '/api/EditGroup',
+    customDataformatter: (row, action, formData) => {
+      // Build the device list from selected devices - the backend resolves the Entra
+      // directory object id from azureADDeviceId
+      const rows = Array.isArray(row) ? row : [row]
+      const addDevice = rows.map((r) => ({
+        label: r.deviceName,
+        value: r.azureADDeviceId,
+        addedFields: {
+          azureADDeviceId: r.azureADDeviceId,
+          deviceName: r.deviceName,
+        },
+      }))
+
+      // Handle multiple groups - return an array of requests (one per group)
+      const selectedGroups = Array.isArray(formData.groupId) ? formData.groupId : [formData.groupId]
+
+      return selectedGroups.map((group) => ({
+        AddDevice: addDevice,
+        tenantFilter: tenantFilter,
+        groupId: group,
+      }))
+    },
+    fields: [
+      {
+        type: 'autoComplete',
+        name: 'groupId',
+        label: 'Select groups to add the device to',
+        multiple: true,
+        creatable: false,
+        validators: { required: 'Please select at least one group' },
+        api: {
+          url: '/api/ListGroups',
+          labelField: (option) =>
+            option?.calculatedGroupType
+              ? `${option.displayName} (${option.calculatedGroupType})`
+              : (option?.displayName ?? ''),
+          valueField: 'id',
+          addedField: {
+            groupType: 'groupType',
+            groupName: 'displayName',
+          },
+          queryKey: `groups-${tenantFilter}`,
+          showRefresh: true,
+        },
+      },
+    ],
+    confirmText: 'Are you sure you want to add [deviceName] to the selected groups?',
+    multiPost: false,
+    allowResubmit: true,
   },
   {
     label: 'Rename Device',
@@ -147,6 +204,19 @@ export const getIntuneDeviceActions = ({ tenantFilter } = {}) => [
     },
     condition: (row) => row.operatingSystem === 'Windows',
     confirmText: 'Are you sure you want to rotate the password for [deviceName]?',
+  },
+  {
+    label: 'Retrieve BIOS Password',
+    type: 'POST',
+    icon: <Memory />,
+    url: '/api/ExecGetRecoveryKey',
+    data: {
+      // hardwarePasswordDetails is keyed on the Intune managedDevice id, not azureADDeviceId.
+      GUID: 'id',
+      RecoveryKeyType: '!BiosPassword',
+    },
+    condition: (row) => row.operatingSystem === 'Windows',
+    confirmText: 'Are you sure you want to retrieve the BIOS password for [deviceName]?',
   },
   {
     label: 'Retrieve BitLocker Keys',
@@ -369,5 +439,51 @@ export const getIntuneDeviceActions = ({ tenantFilter } = {}) => [
       Action: 'retire',
     },
     confirmText: 'Are you sure you want to retire [deviceName]?',
+  },
+]
+
+// Scoped actions for Compromise Remediation Check 9 — Retire + full factory wipe
+// (keepUserData/keepEnrollmentData false). Not the MEM cleanWindowsDevice "Wipe Device" variants.
+export const getBecIntuneDeviceActions = ({ tenantFilter } = {}) => [
+  {
+    label: 'View Device',
+    link: `/endpoint/MEM/devices/device?deviceId=[id]&tenantFilter=${tenantFilter}`,
+    color: 'info',
+    icon: <EyeIcon />,
+    multiPost: false,
+  },
+  {
+    label: 'View in Intune',
+    link: `https://intune.microsoft.com/${tenantFilter}/#view/Microsoft_Intune_Devices/DeviceSettingsMenuBlade/~/overview/mdmDeviceId/[id]`,
+    color: 'info',
+    icon: <EyeIcon />,
+    target: '_blank',
+    multiPost: false,
+    external: true,
+  },
+  {
+    label: 'Retire device',
+    type: 'POST',
+    icon: <Recycling />,
+    url: '/api/ExecDeviceAction',
+    data: {
+      GUID: 'id',
+      Action: 'retire',
+    },
+    confirmText: 'Are you sure you want to retire [deviceName]?',
+  },
+  {
+    label: 'Wipe device (remove enrollment)',
+    type: 'POST',
+    icon: <RestartAlt />,
+    url: '/api/ExecDeviceAction',
+    data: {
+      GUID: 'id',
+      Action: 'wipe',
+      keepUserData: false,
+      keepEnrollmentData: false,
+    },
+    confirmText:
+      'Are you sure you want to factory-wipe [deviceName]? This removes all data and Intune enrollment. This cannot be undone.',
   },
 ]
