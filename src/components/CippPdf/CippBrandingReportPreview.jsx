@@ -1,10 +1,11 @@
 import { useMemo } from 'react'
-import { PDFViewer } from '@react-pdf/renderer'
+import { CippPdfPreview } from './CippPdfPreview'
 import { ExecutiveReportDocument } from '../ExecutiveReportButton'
 import { ShadowAIReportDocument } from '../ShadowAIReportButton'
 import { BECRemediationReportDocument } from '../BECRemediationReportButton'
 import { SharingReportDocument } from './SharingReportButton'
 import { PermissionsReportDocument } from './PermissionsReportButton'
+import { MailFlowReportDocument } from './MailFlowReportButton'
 import { ReportBuilderDocument } from '../ReportBuilder/ReportBuilderPDF'
 import { SAMPLE_DATA_BY_REPORT, SAMPLE_TENANT_NAME } from './previewSampleData'
 import { useReportVariables } from './useReportVariables'
@@ -69,6 +70,8 @@ export const buildPreviewDocument = (reportType, brandingSettings, variables) =>
       return <SharingReportDocument {...shared} sharingData={sample.sharingData} />
     case 'permissions':
       return <PermissionsReportDocument {...shared} permissionsData={sample.permissionsData} />
+    case 'mailFlow':
+      return <MailFlowReportDocument {...shared} mailFlowData={sample.mailFlowData} />
     default:
       return (
         <ExecutiveReportDocument {...shared} {...sample} sectionConfig={EXECUTIVE_SECTIONS} />
@@ -105,9 +108,15 @@ const CippBrandingReportPreview = ({ reportType = 'executive', brandingSettings 
   )
 
   return (
-    <PDFViewer style={{ width: '100%', height: '100%', border: 'none' }} showToolbar={true}>
+    <CippPdfPreview
+      title="Branding preview"
+      fileName="Branding_Preview.pdf"
+      style={{ width: '100%', height: '100%', border: 'none' }}
+      showToolbar={true}
+      showDownload
+    >
       {document}
-    </PDFViewer>
+    </CippPdfPreview>
   )
 }
 

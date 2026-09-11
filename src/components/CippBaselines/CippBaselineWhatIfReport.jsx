@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CippIcons } from '../../utils/icon-registry'
 import {
   Autocomplete,
   Box,
@@ -11,15 +12,14 @@ import {
   Tooltip,
   Typography,
 } from '@mui/material'
-import { Download, PictureAsPdf } from '@mui/icons-material'
 import {
   Document,
   Page,
-  PDFViewer,
   StyleSheet,
   Text,
   View,
 } from '@react-pdf/renderer'
+import { CippPdfPreview } from '../CippPdf/CippPdfPreview'
 import { parseCippDate } from '../../utils/parse-cipp-date'
 
 const operatorLabels = {
@@ -401,7 +401,7 @@ export const CippBaselineWhatIfReport = ({
       <Tooltip title="Preview what applying the configured standards would change for this tenant, including upcoming stages">
         <Button
           variant="contained"
-          startIcon={<PictureAsPdf />}
+          startIcon={<CippIcons.PictureAsPdf />}
           onClick={() => setOpen(true)}
         >
           What-If Report
@@ -439,28 +439,32 @@ export const CippBaselineWhatIfReport = ({
             />
           </Box>
           {open && (
-            <PDFViewer
+            <CippPdfPreview
               // Remount when the simulation changes so react-pdf re-renders cleanly
-              key={simulatedTemplate?.GUID ?? 'assigned-only'}
+              viewerKey={simulatedTemplate?.GUID ?? 'assigned-only'}
+              title="Baseline what-if report"
+              fileName="Baseline_WhatIf_Report.pdf"
               style={{ width: '100%', height: '100%', border: 'none' }}
               showToolbar={true}
             >
               {reportDocument}
-            </PDFViewer>
+            </CippPdfPreview>
           )}
         </DialogContent>
         <DialogActions
           sx={{ p: 2, borderTop: '1px solid', borderColor: 'divider', gap: 1 }}
         >
           <Box sx={{ flex: 1 }}>
-            <Typography variant="caption" color="text.secondary">
+            <Typography variant="caption" sx={{
+              color: "text.secondary"
+            }}>
               Exec-friendly preview - safe to send to customers. No changes are
               made.
             </Typography>
           </Box>
           <Button
             variant="contained"
-            startIcon={<Download />}
+            startIcon={<CippIcons.Download />}
             onClick={handleDownload}
           >
             Download PDF
@@ -471,7 +475,7 @@ export const CippBaselineWhatIfReport = ({
         </DialogActions>
       </Dialog>
     </>
-  )
+  );
 }
 
 export default CippBaselineWhatIfReport
